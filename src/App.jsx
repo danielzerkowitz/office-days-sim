@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import FloorEditor from './components/FloorEditor'
 import TeamManager from './components/TeamManager'
 import ScheduleView from './components/ScheduleView'
@@ -31,6 +31,36 @@ export default function App() {
   const [arts, setArts] = useState(saved?.arts || DEFAULT_ARTS)
   const [schedule, setSchedule] = useState(null)
   const [needsCalc, setNeedsCalc] = useState(false)
+  const importRef = useRef()
+
+  const handleExport = () => {
+    const data = JSON.stringify({ floor, teams, arts }, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'office-layout.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (data.floor) setFloor(data.floor)
+        if (data.teams) setTeams(data.teams)
+        if (data.arts) setArts(data.arts)
+      } catch {
+        alert('Invalid file — could not load layout.')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   useEffect(() => {
     save({ floor, teams, arts })
@@ -75,6 +105,9 @@ export default function App() {
           ))}
         </nav>
         <div className="app-bar-right">
+          <button className="nav-btn" onClick={handleExport}>Export</button>
+          <button className="nav-btn" onClick={() => importRef.current.click()}>Import</button>
+          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
           <span className="app-meta">
             {Object.keys(floor.desks).length} desks &middot; {teams.length} teams
           </span>
