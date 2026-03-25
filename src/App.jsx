@@ -3,6 +3,7 @@ import FloorEditor from './components/FloorEditor'
 import TeamManager from './components/TeamManager'
 import ScheduleView from './components/ScheduleView'
 import { calculateSchedule } from './utils/scheduler'
+import { loadFromCloud, saveToCloud } from './lib/supabase'
 
 const DEFAULT_FLOOR = { cols: 10, rows: 8, desks: {} }
 const DEFAULT_ARTS = [
@@ -11,7 +12,7 @@ const DEFAULT_ARTS = [
 ]
 const STORAGE_KEY = 'officeDaysSim_v1'
 
-function load() {
+function loadLocal() {
   try {
     const s = localStorage.getItem(STORAGE_KEY)
     if (s) return JSON.parse(s)
@@ -19,19 +20,34 @@ function load() {
   return null
 }
 
-function save(data) {
+function saveLocal(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) } catch {}
 }
 
 export default function App() {
-  const saved = load()
+  const local = loadLocal()
   const [tab, setTab] = useState('floor')
-  const [floor, setFloor] = useState(saved?.floor || DEFAULT_FLOOR)
-  const [teams, setTeams] = useState(saved?.teams || [])
-  const [arts, setArts] = useState(saved?.arts || DEFAULT_ARTS)
+  const [floor, setFloor] = useState(local?.floor || DEFAULT_FLOOR)
+  const [teams, setTeams] = useState(local?.teams || [])
+  const [arts, setArts] = useState(local?.arts || DEFAULT_ARTS)
   const [schedule, setSchedule] = useState(null)
   const [needsCalc, setNeedsCalc] = useState(false)
+  const [syncStatus, setSyncStatus] = useState('idle') // 'idle' | 'saving' | 'error'
   const importRef = useRef()
+  const saveTimer = useRef()
+
+  // On mount, load from Supabase and override local state
+  useEffect(() => {
+    loadFromCloud()
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          if (data.floor) setFloor(data.floor)
+          if (data.teams) setTeams(data.teams)
+          if (data.arts) setArts(data.arts)
+        }
+      })
+      .catch(() => {}) // silently fall back to localStorage on error
+  }, [])
 
   const handleExport = () => {
     const data = JSON.stringify({ floor, teams, arts }, null, 2)
@@ -63,8 +79,18 @@ export default function App() {
   }
 
   useEffect(() => {
-    save({ floor, teams, arts })
+    const payload = { floor, teams, arts }
+    saveLocal(payload)
     setNeedsCalc(true)
+
+    // Debounce cloud saves — wait 1s after last change
+    clearTimeout(saveTimer.current)
+    setSyncStatus('saving')
+    saveTimer.current = setTimeout(() => {
+      saveToCloud(payload)
+        .then(() => setSyncStatus('idle'))
+        .catch(() => setSyncStatus('error'))
+    }, 1000)
   }, [floor, teams, arts])
 
   const handleCalculate = useCallback(() => {
@@ -109,7 +135,9 @@ export default function App() {
           <button className="nav-btn" onClick={() => importRef.current.click()}>Import</button>
           <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
           <span className="app-meta">
-            {Object.keys(floor.desks).length} desks &middot; {teams.length} teams
+            {syncStatus === 'saving' && '↑ saving…'}
+            {syncStatus === 'error' && '⚠ sync failed'}
+            {syncStatus === 'idle' && `${Object.keys(floor.desks).length} desks · ${teams.length} teams`}
           </span>
         </div>
       </header>

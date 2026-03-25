@@ -12,7 +12,8 @@
       "Bash(osascript -l JavaScript -e ':*)",
       "Bash(python3 -S -c \":*)",
       "Bash(swift -e ':*)",
-      "Bash(swift jiggler.swift)"
+      "Bash(swift jiggler.swift)",
+      "Bash(curl -s http://localhost:5173)"
     ]
   }
 }
