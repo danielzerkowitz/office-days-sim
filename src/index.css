@@ -390,6 +390,7 @@ body {
 .day-buttons { display: flex; gap: 6px; margin-top: 8px; }
 
 .day-btn {
+  position: relative;
   padding: 6px 12px;
   border: 2px solid #d0d4e3;
   border-radius: 6px;
@@ -400,8 +401,30 @@ body {
   color: #5a5f72;
 }
 .day-btn:hover:not(:disabled) { border-color: #3b5bdb; color: #3b5bdb; }
-.day-selected { background: #3b5bdb !important; border-color: #3b5bdb !important; color: #fff !important; }
+.day-primary { background: #3b5bdb !important; border-color: #3b5bdb !important; color: #fff !important; }
+.day-secondary { background: #748ffc !important; border-color: #748ffc !important; color: #fff !important; }
 .day-btn:disabled { opacity: .4; cursor: default; }
+
+.day-badge {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  background: #1a1d27;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.day-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
 
 .form-actions { display: flex; gap: 8px; }
 

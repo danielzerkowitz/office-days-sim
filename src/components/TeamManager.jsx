@@ -17,7 +17,7 @@ export default function TeamManager({ teams, onTeamsChange, arts, onArtsChange }
     if (!form.name.trim()) return 'Team name is required.'
     if (!form.size || parseInt(form.size) < 1) return 'Team size must be at least 1.'
     if (!form.artId) return 'Select an ART.'
-    if (form.days.length !== 1) return 'Select an office day.'
+    if (form.days.length < 1) return 'Select at least one office day.'
     if (teams.find(t => t.id !== editId && t.name.trim().toLowerCase() === form.name.trim().toLowerCase()))
       return 'A team with this name already exists.'
     return null
@@ -65,7 +65,18 @@ export default function TeamManager({ teams, onTeamsChange, arts, onArtsChange }
   }
 
   const toggleDay = day => {
-    setForm(f => ({ ...f, days: f.days.includes(day) ? [] : [day] }))
+    setForm(f => {
+      if (f.days.includes(day)) {
+        // Deselect
+        return { ...f, days: f.days.filter(d => d !== day) }
+      }
+      if (f.days.length < 2) {
+        // Add as next day (primary or secondary)
+        return { ...f, days: [...f.days, day] }
+      }
+      // Already have 2: replace secondary (index 1) with new day
+      return { ...f, days: [f.days[0], day] }
+    })
   }
 
   const updateArt = (id, field, value) => {
@@ -190,18 +201,25 @@ export default function TeamManager({ teams, onTeamsChange, arts, onArtsChange }
           </div>
 
           <div className="day-selector">
-            <span className="field-label-text">Office day</span>
+            <span className="field-label-text">Office days</span>
             <div className="day-buttons">
-              {DAYS.map(day => (
-                <button
-                  key={day}
-                  className={`day-btn ${form.days.includes(day) ? 'day-selected' : ''}`}
-                  onClick={() => toggleDay(day)}
-                >
-                  {DAY_SHORT[day]}
-                </button>
-              ))}
+              {DAYS.map(day => {
+                const idx = form.days.indexOf(day)
+                const label = idx === 0 ? '1st' : idx === 1 ? '2nd' : null
+                return (
+                  <button
+                    key={day}
+                    className={`day-btn ${idx >= 0 ? 'day-selected' : ''} ${idx === 0 ? 'day-primary' : ''} ${idx === 1 ? 'day-secondary' : ''}`}
+                    onClick={() => toggleDay(day)}
+                    title={idx === 0 ? 'Primary day' : idx === 1 ? 'Secondary day' : ''}
+                  >
+                    {DAY_SHORT[day]}
+                    {label && <span className="day-badge">{label}</span>}
+                  </button>
+                )
+              })}
             </div>
+            <span className="day-hint">Click once for primary, again for secondary (optional)</span>
           </div>
 
           <div className="form-actions">
@@ -238,7 +256,7 @@ export default function TeamManager({ teams, onTeamsChange, arts, onArtsChange }
                         <div className="team-color-bar" style={{ background: getTeamColor(team, teams, arts) }} />
                         <div className="team-card-info">
                           <strong>{team.name}</strong>
-                          <span>{team.size} people &middot; {team.days.map(d => DAY_SHORT[d]).join(', ')}</span>
+                          <span>{team.size} people &middot; {team.days.map((d, i) => `${DAY_SHORT[d]}${i === 1 ? ' (2nd)' : ''}`).join(', ')}</span>
                         </div>
                         <div className="team-card-actions">
                           <button className="btn-sm" onClick={() => handleEdit(team)}>Edit</button>
